@@ -4,6 +4,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 public class Err {
+    public static final int PRINT_NONE = 0;
+    public static final int PRINT_MAIN = 1;
+    public static final int PRINT_FULL = 2;
+
     //попробую внутри сделать создаваемый один раз объект
     //чтобы можно было к нему обращаться, когда лень создавать свои
     private static final Err last = new Err();
@@ -24,6 +28,16 @@ public class Err {
     */
     public static boolean wasError() {
         return last.hasError();
+    }
+
+    /*
+    проверка последней ошибки, а заодно и печать о ней, если задано
+    */
+    public static boolean wasError(int needPrint) {
+        boolean res = last.hasError();
+        if (needPrint == PRINT_MAIN || needPrint == PRINT_FULL) last.printMsg();
+        if (needPrint == PRINT_FULL) last.printStackTrace();
+        return res;
     }
 
     /*
