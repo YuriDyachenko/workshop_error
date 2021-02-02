@@ -177,6 +177,13 @@ public class Err {
     }
 
     /*
+    статический самый кородкий метод
+    */
+    public static void set(Exception e) {
+        last.setInner(null, e);
+    }
+
+    /*
     статический метод назначает именно ошибку
     */
     public static void set(Err err, String msg, Exception e) {
