@@ -4,39 +4,46 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Scanner;
 
+/*
+класс Err доработан, чтобы можно было не создавать каждый раз его его объект
+у него внутри есть приватное статическое финальное поле last типа Err, которое один раз
+создается
+статические методы clear и set без параметра-объекта err позволяют работать именно с last
+wasError вернет ошибку именно из него, но можно использовать и getLast().hasError()
+дальше я решил не дублировать методы, можно получить last через getLast() и
+все его методы получения или печати информации об ошибке тогда доступны
+!!! не забываем чистить last в каждом методе, где собираемся использовать
+работа с любым обычным объектом Err, созданным через new, по логике класса
+всегда заполняет и last теми же значениями ошибки
+например, в чтении файла я использую отдельный объект, а проверю на выходе все равно last
+*/
+
 public class Main {
 
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
-        //по умолчанию создается объект без ошибки
-        Err err = new Err();
-        //три раза запрашиваем с разными параметрами, каждый раз - пока введут без ошибок
-        for (int i = 0; i <= 2; i++) {
-            while (true) {
-                int a = 0;
-                if (i == 0) a = enterInt(err, scanner, null, null, null);
-                if (i == 1) a = enterInt(err, scanner, null, 0, 9);
-                if (i == 2) a = enterInt(err, scanner, "Тут моя подсказка, а что проверяется, никто не знает: ",
-                        0, 9);
-                if (err.hasError()) {
-                    //печатаем всю доступную информацию об ошибке
-                    err.printMsg();
-                    err.printDetailMsg();
-                    err.printStackTrace();
-                } else {
-                    System.out.println("ВВЕЛИ: " + a);
-                    break;
-                }
+
+        while (true) {
+            //запрос целого числа, где можно ввести нечаянно буквы или числа не из заданного диапазона
+            int a = enterInt(scanner, null, 0, 9);
+            if (Err.wasError()) {
+                //печатаем всю доступную информацию об ошибке
+                Err.getLast().printMsg();
+                Err.getLast().printDetailMsg();
+                Err.getLast().printStackTrace();
+            } else {
+                System.out.println("ВВЕЛИ: " + a);
+                break;
             }
         }
-        //ЕРР при нормальном выходе всегда очищена, можно ее использовать и дальше
-        //наример, для чтения несуществующего файла
-        String text = readTextFile(err, "file.txt");
-        if (err.hasError()) {
+
+        //чтение несуществующего файла
+        String text = readTextFile("file.txt");
+        if (Err.wasError()) {
             //печатаем всю доступную информацию об ошибке
-            err.printMsg();
-            err.printDetailMsg();
-            err.printStackTrace();
+            Err.getLast().printMsg();
+            Err.getLast().printDetailMsg();
+            Err.getLast().printStackTrace();
         } else {
             System.out.println("СЧИТАЛИ: \n" + text);
         }
@@ -44,11 +51,9 @@ public class Main {
         scanner.close();
     }
     
-    private static int enterInt(Err err, Scanner scanner, String prompt, Integer leftBound, Integer rightBound) {
-        //чтобы не возиться с обработкой ошибки, могут и НУЛЛ передать
-        //поэтому работаем с ЕРР только для НЕ НУЛЛ
-        if (err != null)
-            err.clear();
+    private static int enterInt(Scanner scanner, String prompt, Integer leftBound, Integer rightBound) {
+        //в этом примере мы используем только работу с last ошибкой
+        Err.clear();
         //если не передали подсказку, то выводим свою
         //можно даже границы задать в ней
         String bounds = String.format(" (%d..%d)",
@@ -59,13 +64,13 @@ public class Main {
         try {
             int res = scanner.nextInt();
             //своя проверка на левую границу
-            if (leftBound != null && err != null && res < leftBound) {
-                err.set(String.format("Введенное число %d меньше допустимого %d!", res, leftBound));
+            if (leftBound != null && res < leftBound) {
+                Err.set(String.format("Введенное число %d меньше допустимого %d!", res, leftBound));
                 return 0;
             }
             //своя проверка на правую границу
-            if (rightBound != null && err != null && res > rightBound) {
-                err.set(String.format("Введенное число %d больше допустимого %d!", res, rightBound));
+            if (rightBound != null && res > rightBound) {
+                Err.set(String.format("Введенное число %d больше допустимого %d!", res, rightBound));
                 return 0;
             }
             //все ок, можн вернуть число
@@ -75,16 +80,15 @@ public class Main {
             //иначе будет бесконечный цикл
             scanner.nextLine();
             //стандартная ошибка, можно МСЖ и не передавать
-            if (err != null)
-                err.set("Ошибка ввода целого числа!", e);
+            Err.set("Ошибка ввода целого числа!", e);
             return 0;
         }
     }
 
-    private static String readTextFile(Err err, String fileName) {
-        //всегда чистим ошибку, мало ли что
-        //используем новые статические методы класса, которые проверяют сами на НУЛЛ
-        Err.clear(err);
+    private static String readTextFile(String fileName) {
+        //можно работать внутри со своим объектом ошибки
+        //last параллельно все равно заполнится аналогичной информацией
+        Err err = new Err();
         //тут накапливаем результат, если не будет ошибки, иначе вернем пустую строку
         StringBuilder stringBuilder = new StringBuilder();
         try {

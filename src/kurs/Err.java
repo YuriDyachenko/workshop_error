@@ -4,15 +4,53 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 public class Err {
+    //попробую внутри сделать создаваемый один раз объект
+    //чтобы можно было к нему обращаться, когда лень создавать свои
+    private static final Err last = new Err();
+
     private boolean er = false;
     private String msg = null;
     private Exception e = null;
 
+    /*
+    стандартная проверка, есть ли ошибка
+    */
     public boolean hasError() {
         return er;
     }
 
-    public void set(String msg, Exception e) {
+    /*
+    проверка последней ошибки
+    */
+    public static boolean wasError() {
+        return last.hasError();
+    }
+
+    /*
+    остальные методы предлагается вызывать уже из полученного
+    этим методом объекта
+    */
+    public static Err getLast() {
+        return last;
+    }
+
+    /*
+    единый внутренний метод очистки
+    */
+    private void clearInner() {
+        er = false;
+        msg = null;
+        e = null;
+        //очистка любого объекта очищает и last
+        //но только если это не он сам, а то будет бесконечная рекурсия
+        if (this != last)
+            clear(last);
+    }
+
+    /*
+    единый внутренний метод, через который идет установка любой ошибки
+    */
+    private void setInner(String msg, Exception e) {
         er = true;
         if (msg == null && e != null) {
             this.msg = e.getMessage();
@@ -22,25 +60,35 @@ public class Err {
                 //вот только забыл, как такое смоделировать, но вроде сталкивался где-то
                 this.msg = e.toString();
             }
-
         } else
             if (msg != null)
                 this.msg = msg;
         if (e != null)
             this.e = e;
+        //установка любой ошибки заполняет и last
+        //но только если это не он сам, а то будет бесконечная рекурсия
+        if (this != last)
+            set(last, msg, e);
     }
 
-    public void set(String msg) {
-        er = true;
-        if (msg == null) return;
-        this.msg = msg;
+    /*
+    сокращенный внутренний метод, вызывает единый
+    */
+    private void setInner(String msg) {
+        setInner(msg, null);
     }
 
+    /*
+    возвращает пользовательское сообщение об ошибке
+    */
     public String getMsg() {
         if (msg == null) return "";
         return msg;
     }
 
+    /*
+    возвращает сообщение об ошибке из поля e
+    */
     public String getDetailMsg() {
         if (e == null) return "";
         String s = e.getMessage();
@@ -48,43 +96,85 @@ public class Err {
         return s;
     }
 
-    public void printStackTrace() {
-        if (e == null) return;
+    /*
+    возвращает трассировку из поля e
+    */
+    public String getStackTrace() {
+        if (e == null) return "";
         StringWriter sw = new StringWriter();
         e.printStackTrace(new PrintWriter(sw));
-        System.out.println(sw.toString());
+        return sw.toString();
     }
 
+    /*
+    печатает трассировку из поля e
+    */
+    public void printStackTrace() {
+        String s = getStackTrace();
+        if (s == null || s.isEmpty()) return;
+        System.out.println(s);
+    }
+
+    /*
+    печатает пользовательское сообщение об ошибке
+    */
     public void printMsg() {
         String s = getMsg();
         if (s == null || s.isEmpty()) return;
         System.out.println(s);
     }
 
+    /*
+    печатает сообщение об ошибке из поля e
+    */
     public void printDetailMsg() {
         String s = getDetailMsg();
         if (s == null || s.isEmpty()) return;
         System.out.println(s);
     }
 
-    public void clear() {
-        er = false;
-        msg = null;
-        e = null;
-    }
-
+    /*
+    статический метод чистит переданную ошибку с проверкой на нулл
+    */
     public static void clear(Err err) {
         if (err == null) return;
-        err.clear();
+        err.clearInner();
     }
 
-    public static void set(Err err, String msg) {
-        if (err == null) return;
-        err.set(msg);
+    /*
+    статический метод без параметров чистит именно последнюю ошибку
+    */
+    public static void clear() {
+        last.clearInner();
     }
 
+    /*
+    статический метод без параметров назначает именно последнюю ошибку
+    */
+    public static void set(String msg, Exception e) {
+        last.setInner(msg, e);
+    }
+
+    /*
+    сокращенный статический метод без параметров назначает именно последнюю ошибку
+    */
+    public static void set(String msg) {
+        set(msg, null);
+    }
+
+    /*
+    статический метод назначает именно ошибку
+    */
     public static void set(Err err, String msg, Exception e) {
-        if (err == null) return;
-        err.set(msg, e);
+        if (err == null)  return;
+        err.setInner(msg, e);
     }
+
+    /*
+    сокращенный статический метод назначает именно ошибку
+    */
+    public static void set(Err err, String msg) {
+        set(err, msg, null);
+    }
+
 }
